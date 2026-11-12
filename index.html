@@ -13,7 +13,7 @@ header{position:absolute;left:24px;right:24px;top:17px;height:47px;border-bottom
 h1{margin:0;font-size:27px;line-height:35px;letter-spacing:.4px}
 #page-number{position:absolute;right:0;top:3px;font-size:23px;color:#b8c8db}
 .page{position:absolute;left:24px;right:24px;top:78px;height:438px}
-#page2{display:none}
+#page2,#page3{display:none}
 .badge{display:inline-block;padding:7px 12px;margin-right:8px;background:#254d3a;color:#bcffd5;font-size:19px;font-weight:bold;vertical-align:top}
 .pending{background:#654c1b;color:#fff0b5}
 .yes{color:#9aefb9}.no{color:#ffb47f}.unknown{color:#f1db8d}
@@ -34,16 +34,18 @@ h1{margin:0;font-size:27px;line-height:35px;letter-spacing:.4px}
 #runtime{background:#182638;padding:11px 12px;font-size:20px;margin-top:16px;line-height:27px}
 .swatches{margin-top:14px;white-space:nowrap}
 .swatch{display:inline-block;width:164px;padding:8px 0;text-align:center;color:#000;font-size:18px;font-weight:bold;margin-right:4px}
+#verdict{background:#182638;border-left:4px solid #f1db8d;padding:12px 14px;font-size:20px;line-height:28px;min-height:120px;margin-top:14px}
 footer{position:absolute;left:24px;right:24px;bottom:14px;height:41px;border-top:1px solid #405166;padding-top:10px;font-size:15px;color:#b8c8db}
 #controls{float:right;margin-top:-4px}
 button{font-family:Arial,Helvetica,sans-serif;border:1px solid #718499;background:#182638;color:#fff;padding:5px 10px;font-size:16px;cursor:pointer;margin-left:5px}
 #hint{display:inline-block;max-width:550px;line-height:21px}
 noscript{display:block;color:#fff0b5;font-size:17px;margin-top:8px}
+#probe-box{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden}
 </style>
 </head>
 <body>
 <div id="stage">
-  <header><h1>ДИАГНОСТИКА БРАУЗЕРА ЭКРАНА</h1><span id="page-number">1 / 2</span></header>
+  <header><h1>ДИАГНОСТИКА БРАУЗЕРА ЭКРАНА</h1><span id="page-number">1 / 3</span></header>
   <div class="page" id="page1">
     <span class="badge">HTML ЗАГРУЖЕН</span><span class="badge pending" id="js-status">JavaScript: НЕ ЗАПУЩЕН</span>
     <div class="eyebrow">Версия, которую сообщает этот браузер</div>
@@ -71,15 +73,27 @@ noscript{display:block;color:#fff0b5;font-size:17px;margin-top:8px}
     </table>
     <div id="runtime">Ожидание данных…</div>
     <div class="swatches"><span class="swatch" style="background:#ff625b">КРАСНЫЙ</span><span class="swatch" style="background:#6fe398">ЗЕЛЁНЫЙ</span><span class="swatch" style="background:#77b9ff">СИНИЙ</span><span class="swatch" style="background:#fff">БЕЛЫЙ</span><span class="swatch" style="background:#111;color:#fff;border:1px solid #718499">ЧЁРНЫЙ</span></div>
-    <div class="note">«ДА» — функция обнаружена; это не полный тест совместимости.<br>Страница не отправляет отчёты и не подключает внешние ресурсы.</div>
+    <div class="note">«ДА» — функция обнаружена; это не полный тест совместимости.</div>
   </div>
-  <footer><span id="hint">Тест v1.0 · Без внешних библиотек</span><span id="controls"><button id="pause" type="button">Пауза</button><button id="next" type="button">Далее →</button></span></footer>
+  <div class="page" id="page3">
+    <h2 class="test-heading">СЕТЬ: GITHUB PAGES И ANIMAL-PARK.BY</h2>
+    <table class="tests">
+      <tr><td>Картинка с GitHub Pages (HTTPS)</td><td class="result" id="t-gh">…</td></tr>
+      <tr><td>Favicon animal-park.by по HTTPS</td><td class="result" id="t-ap-https">…</td></tr>
+      <tr><td>Favicon animal-park.by по HTTP</td><td class="result" id="t-ap-http">…</td></tr>
+    </table>
+    <div id="verdict">Идёт проверка сети… Откройте эту страницу на LED-экране и сфотографируйте итог.</div>
+    <div class="note">Если GitHub = ДА, а animal-park HTTPS = НЕТ — браузер экрана не доверяет сертификату GlobalSign Root R46.<br>Полный сайт парка для LED не подходит: MODX, много CSS/JS и внешние сервисы.</div>
+  </div>
+  <footer><span id="hint">Тест v1.1 · Страница 3 проверяет animal-park.by</span><span id="controls"><button id="pause" type="button">Пауза</button><button id="next" type="button">Далее →</button></span></footer>
 </div>
+<div id="probe-box"></div>
 <script>
-/* Deliberately old JavaScript syntax. No network calls, storage writes or dependencies. */
+/* Deliberately old JavaScript syntax. No storage writes. Network probes only on page 3 logic. */
 (function () {
-  var page = 1, elapsed = 0, paused = false, fixed = false, period = 20;
+  var page = 1, elapsed = 0, paused = false, fixed = false, period = 20, pages = 3;
   var started = new Date().getTime();
+  var net = { gh: null, apHttps: null, apHttp: null, done: false };
   function byId(id) { return document.getElementById(id); }
   function text(id, value) {
     var e = byId(id);
@@ -157,36 +171,86 @@ noscript{display:block;color:#fff0b5;font-size:17px;margin-top:8px}
   var canvas = null;
   try { var c = document.createElement('canvas'); canvas = !!(c.getContext && c.getContext('2d')); } catch (e) { canvas = false; }
   yes('t-canvas', canvas);
+
+  function probeImage(url, key, timeoutMs) {
+    var img = new Image();
+    var settled = false;
+    var box = byId('probe-box');
+    function finish(ok) {
+      if (settled) { return; }
+      settled = true;
+      net[key] = ok;
+      try { if (img.parentNode) { img.parentNode.removeChild(img); } } catch (e) {}
+      paintNet();
+    }
+    img.onload = function () { finish(true); };
+    img.onerror = function () { finish(false); };
+    img.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'cb=' + new Date().getTime();
+    if (box) { box.appendChild(img); }
+    window.setTimeout(function () { finish(false); }, timeoutMs || 8000);
+  }
+  function paintNet() {
+    yes('t-gh', net.gh);
+    yes('t-ap-https', net.apHttps);
+    yes('t-ap-http', net.apHttp);
+    if (net.gh === null || net.apHttps === null || net.apHttp === null) {
+      text('verdict', 'Идёт проверка сети… Подождите несколько секунд.');
+      return;
+    }
+    net.done = true;
+    var msg;
+    if (net.gh && !net.apHttps && net.apHttp) {
+      msg = 'ВЫВОД: сеть есть, HTTP до парка открывается, HTTPS до парка — нет. Браузер экрана не принимает сертификат animal-park.by (GlobalSign Root R46). GitHub Pages при этом работает.';
+    } else if (net.gh && !net.apHttps && !net.apHttp) {
+      msg = 'ВЫВОД: GitHub доступен, animal-park.by недоступен с экрана. Для LED используйте GitHub Pages или отдайте LED-страницу с animal-park по HTTP без шаблона MODX.';
+    } else if (net.gh && net.apHttps) {
+      msg = 'ВЫВОД: HTTPS animal-park.by с этого браузера открывается. Белый экран сайта парка — из-за тяжёлой вёрстки MODX/JS/CSS, а не из-за сертификата. Нужна отдельная лёгкая LED-страница.';
+    } else if (!net.gh && !net.apHttps) {
+      msg = 'ВЫВОД: внешние HTTPS-ресурсы не грузятся. Проверьте DNS/шлюз контроллера и доступ в интернет.';
+    } else {
+      msg = 'ВЫВОД: смешанный результат. Сфотографируйте таблицу и User-Agent с первой страницы.';
+    }
+    text('verdict', msg);
+  }
+  function startNetProbes() {
+    /* Bust caches; tiny resources only. */
+    probeImage('https://salexvl.github.io/hdplayer-browser-test/pixel.png', 'gh', 8000);
+    probeImage('https://animal-park.by/favicon.png', 'apHttps', 10000);
+    probeImage('http://animal-park.by/favicon.png', 'apHttp', 10000);
+  }
+
   function runtime() {
     var age = Math.floor((new Date().getTime() - started) / 1000);
     text('runtime', 'Экран: ' + screen.width + ' x ' + screen.height + ' · Глубина: ' + screen.colorDepth + ' бит' +
       ' · Таймер: ' + age + ' с');
   }
   function hint() {
-    text('hint', fixed ? 'Тест v1.0 · Закреплённая страница · Сфотографируйте экран' :
-      (paused ? 'Тест v1.0 · Пауза · Сфотографируйте экран' : 'Тест v1.0 · Следующая страница через ' + (period - elapsed) + ' с'));
+    text('hint', fixed ? 'Тест v1.1 · Закреплённая страница · Сфотографируйте экран' :
+      (paused ? 'Тест v1.1 · Пауза · Сфотографируйте экран' : 'Тест v1.1 · Следующая страница через ' + (period - elapsed) + ' с'));
     text('pause', paused ? 'Продолжить' : 'Пауза');
   }
   function show(n) {
     page = n; elapsed = 0;
     byId('page1').style.display = page === 1 ? 'block' : 'none';
     byId('page2').style.display = page === 2 ? 'block' : 'none';
-    text('page-number', page + ' / 2'); hint();
+    byId('page3').style.display = page === 3 ? 'block' : 'none';
+    text('page-number', page + ' / ' + pages); hint();
   }
-  var p = /(?:\?|&)page=([12])(?:&|$)/.exec(location.search);
+  var p = /(?:\?|&)page=([123])(?:&|$)/.exec(location.search);
   if (p) { fixed = true; paused = true; page = Number(p[1]); }
   byId('pause').onclick = function () { fixed = false; paused = !paused; hint(); };
-  byId('next').onclick = function () { show(page === 1 ? 2 : 1); };
+  byId('next').onclick = function () { show(page === pages ? 1 : page + 1); };
   document.onkeydown = function (event) {
     var ev = event || window.event, key = ev.keyCode;
     if (key === 32) { fixed = false; paused = !paused; hint(); if (ev.preventDefault) { ev.preventDefault(); } return false; }
-    if (key === 37 || key === 39) { show(page === 1 ? 2 : 1); }
+    if (key === 37) { show(page === 1 ? pages : page - 1); }
+    if (key === 39) { show(page === pages ? 1 : page + 1); }
   };
   window.onresize = size;
-  size(); runtime(); show(page);
+  size(); runtime(); show(page); startNetProbes();
   window.setInterval(function () {
     runtime();
-    if (!paused) { elapsed++; if (elapsed >= period) { show(page === 1 ? 2 : 1); } }
+    if (!paused) { elapsed++; if (elapsed >= period) { show(page === pages ? 1 : page + 1); } }
     hint();
   }, 1000);
 })();
