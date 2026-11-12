@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>HDPlayer — диагностика браузера экрана</title>
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;background:#0c1520;color:#fff;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
+*{box-sizing:border-box}
+#stage{position:absolute;left:0;top:0;width:896px;height:576px;background:#0c1520;-webkit-transform-origin:0 0;transform-origin:0 0;border:2px solid #718499}
+header{position:absolute;left:24px;right:24px;top:17px;height:47px;border-bottom:1px solid #405166}
+h1{margin:0;font-size:27px;line-height:35px;letter-spacing:.4px}
+#page-number{position:absolute;right:0;top:3px;font-size:23px;color:#b8c8db}
+.page{position:absolute;left:24px;right:24px;top:78px;height:438px}
+#page2{display:none}
+.badge{display:inline-block;padding:7px 12px;margin-right:8px;background:#254d3a;color:#bcffd5;font-size:19px;font-weight:bold;vertical-align:top}
+.pending{background:#654c1b;color:#fff0b5}
+.yes{color:#9aefb9}.no{color:#ffb47f}.unknown{color:#f1db8d}
+.eyebrow{font-size:16px;color:#b8c8db;margin:15px 0 4px;text-transform:uppercase;letter-spacing:1px}
+#browser-version{font-size:39px;line-height:45px;font-weight:bold;color:#fff;white-space:nowrap}
+#browser-kind{font-size:20px;line-height:27px;color:#9fcaff;min-height:27px}
+.info{width:100%;border-collapse:collapse;margin:12px 0 10px;table-layout:fixed}
+.info td{padding:9px 12px;background:#182638;border:2px solid #0c1520;font-size:21px;vertical-align:top;word-wrap:break-word}
+.label{display:block;color:#b8c8db;font-size:15px;margin-bottom:5px}
+#ua{background:#182638;border-left:4px solid #7bb7ff;padding:12px 14px;font-family:Consolas,"Courier New",monospace;font-size:21px;line-height:1.28;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;min-height:112px;max-height:152px;overflow:hidden}
+.note{font-size:16px;color:#c2cede;line-height:22px;margin:10px 0 0}
+#js-error{color:#ffb47f;font-size:16px;line-height:20px;margin-top:5px;word-wrap:break-word}
+.test-heading{margin:0 0 10px;font-size:25px}
+.tests{width:100%;border-collapse:collapse;table-layout:fixed}
+.tests td{padding:9px 12px;border-bottom:1px solid #405166;font-size:22px;height:44px}
+.tests .result{width:105px;text-align:right;font-weight:bold}
+.tests .gap{width:24px;border:0;padding:0}
+#runtime{background:#182638;padding:11px 12px;font-size:20px;margin-top:16px;line-height:27px}
+.swatches{margin-top:14px;white-space:nowrap}
+.swatch{display:inline-block;width:164px;padding:8px 0;text-align:center;color:#000;font-size:18px;font-weight:bold;margin-right:4px}
+footer{position:absolute;left:24px;right:24px;bottom:14px;height:41px;border-top:1px solid #405166;padding-top:10px;font-size:15px;color:#b8c8db}
+#controls{float:right;margin-top:-4px}
+button{font-family:Arial,Helvetica,sans-serif;border:1px solid #718499;background:#182638;color:#fff;padding:5px 10px;font-size:16px;cursor:pointer;margin-left:5px}
+#hint{display:inline-block;max-width:550px;line-height:21px}
+noscript{display:block;color:#fff0b5;font-size:17px;margin-top:8px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <header><h1>ДИАГНОСТИКА БРАУЗЕРА ЭКРАНА</h1><span id="page-number">1 / 2</span></header>
+  <div class="page" id="page1">
+    <span class="badge">HTML ЗАГРУЖЕН</span><span class="badge pending" id="js-status">JavaScript: НЕ ЗАПУЩЕН</span>
+    <div class="eyebrow">Версия, которую сообщает этот браузер</div>
+    <div id="browser-version">Ожидание JavaScript</div>
+    <div id="browser-kind">Если этот текст не меняется, скрипт не выполнился.</div>
+    <table class="info"><tr>
+      <td><span class="label">ОС ИЗ USER-AGENT</span><span id="os">—</span></td>
+      <td><span class="label">ОБЛАСТЬ СТРАНИЦЫ</span><span id="viewport">—</span></td>
+      <td><span class="label">ПРОТОКОЛ / ПЛОТНОСТЬ</span><span id="protocol">—</span></td>
+    </tr></table>
+    <div class="eyebrow" style="margin-top:5px">Полная строка User-Agent — сфотографируйте её</div>
+    <div id="ua">Недоступна, пока не выполнен JavaScript.</div>
+    <div class="note">На LED-экране — данные плеера. В предпросмотре — данные ПК.<br>Версия прошивки контроллера этой страницей не определяется.</div>
+    <div id="js-error"></div>
+    <noscript>JavaScript отключён или не поддерживается. HTML при этом работает.</noscript>
+  </div>
+  <div class="page" id="page2">
+    <h2 class="test-heading">БАЗОВЫЕ ВОЗМОЖНОСТИ</h2>
+    <table class="tests">
+      <tr><td>CSS Flexbox</td><td class="result" id="t-flex">—</td><td class="gap"></td><td>Promise API</td><td class="result" id="t-promise">—</td></tr>
+      <tr><td>CSS Grid</td><td class="result" id="t-grid">—</td><td class="gap"></td><td>Fetch API</td><td class="result" id="t-fetch">—</td></tr>
+      <tr><td>CSS-переменные</td><td class="result" id="t-vars">—</td><td class="gap"></td><td>Canvas 2D</td><td class="result" id="t-canvas">—</td></tr>
+      <tr><td>CSS aspect-ratio</td><td class="result" id="t-ratio">—</td><td class="gap"></td><td>WebSocket API</td><td class="result" id="t-ws">—</td></tr>
+      <tr><td>CSS :has()</td><td class="result" id="t-has">—</td><td class="gap"></td><td>JS-модули</td><td class="result" id="t-modules">—</td></tr>
+    </table>
+    <div id="runtime">Ожидание данных…</div>
+    <div class="swatches"><span class="swatch" style="background:#ff625b">КРАСНЫЙ</span><span class="swatch" style="background:#6fe398">ЗЕЛЁНЫЙ</span><span class="swatch" style="background:#77b9ff">СИНИЙ</span><span class="swatch" style="background:#fff">БЕЛЫЙ</span><span class="swatch" style="background:#111;color:#fff;border:1px solid #718499">ЧЁРНЫЙ</span></div>
+    <div class="note">«ДА» — функция обнаружена; это не полный тест совместимости.<br>Страница не отправляет отчёты и не подключает внешние ресурсы.</div>
+  </div>
+  <footer><span id="hint">Тест v1.0 · Без внешних библиотек</span><span id="controls"><button id="pause" type="button">Пауза</button><button id="next" type="button">Далее →</button></span></footer>
+</div>
+<script>
+/* Deliberately old JavaScript syntax. No network calls, storage writes or dependencies. */
+(function () {
+  var page = 1, elapsed = 0, paused = false, fixed = false, period = 20;
+  var started = new Date().getTime();
+  function byId(id) { return document.getElementById(id); }
+  function text(id, value) {
+    var e = byId(id);
+    if (!e) { return; }
+    while (e.firstChild) { e.removeChild(e.firstChild); }
+    e.appendChild(document.createTextNode(String(value)));
+  }
+  function yes(id, value) {
+    text(id, value === null ? 'Н/Д' : (value ? 'ДА' : 'НЕТ'));
+    byId(id).className = 'result ' + (value === null ? 'unknown' : (value ? 'yes' : 'no'));
+  }
+  window.onerror = function (message) {
+    text('js-error', 'Ошибка JS: ' + String(message).substring(0, 160));
+    return false;
+  };
+  text('js-status', 'JavaScript: РАБОТАЕТ');
+  byId('js-status').className = 'badge';
+  var ua = navigator.userAgent || '(пустая строка)', match, version = '', kind = 'Тип не определён — смотрите User-Agent';
+  text('ua', ua);
+  if (ua.length > 260) { byId('ua').style.fontSize = '17px'; }
+  if (ua.length > 420) { byId('ua').style.fontSize = '14px'; }
+  match = /(?:Chrome|Chromium|CriOS)\/([0-9.]+)/.exec(ua);
+  if (match) {
+    version = 'Chromium ' + match[1];
+    if (/QtWebEngine\//.test(ua)) {
+      kind = 'Qt WebEngine ' + ((/QtWebEngine\/([0-9.]+)/.exec(ua) || [])[1] || '') + ' · обычно предпросмотр ПК';
+    } else if (/;\s*wv\b/.test(ua)) {
+      kind = 'Android WebView · обнаружена метка wv';
+    } else if (/Android/.test(ua)) {
+      kind = 'Браузер Android на Chromium · метка WebView не найдена';
+    } else { kind = 'Браузер на Chromium · смотрите полную строку ниже'; }
+  } else if ((match = /Firefox\/([0-9.]+)/.exec(ua))) {
+    version = 'Firefox ' + match[1]; kind = 'Семейство Gecko';
+  } else if ((match = /(?:MSIE\s|rv:)([0-9.]+)/.exec(ua)) && /MSIE|Trident/.test(ua)) {
+    version = 'Internet Explorer ' + match[1]; kind = 'Семейство Trident';
+  } else if (/AppleWebKit\//.test(ua)) {
+    version = 'WebKit / неуточнённый браузер';
+    kind = 'По одной строке точный движок не подтверждён';
+  } else { version = 'Не определён'; }
+  text('browser-version', version); text('browser-kind', kind);
+  if (version.length > 30) { byId('browser-version').style.fontSize = '31px'; }
+  var os = 'Не указана';
+  if ((match = /Android[\s\/]([^;)]+)/.exec(ua))) { os = 'Android ' + match[1]; }
+  else if ((match = /Windows NT ([0-9.]+)/.exec(ua))) { os = 'Windows NT ' + match[1]; }
+  else if (/iPhone|iPad/.test(ua)) { os = 'iOS / iPadOS'; }
+  else if (/Macintosh|Mac OS/.test(ua)) { os = 'macOS'; }
+  else if (/Linux/.test(ua)) { os = 'Linux'; }
+  text('os', os);
+  function size() {
+    var w = window.innerWidth || document.documentElement.clientWidth || 896;
+    var h = window.innerHeight || document.documentElement.clientHeight || 576;
+    var scale = Math.min(w / 896, h / 576), s = byId('stage');
+    s.style.transform = 'scale(' + scale + ')';
+    s.style.webkitTransform = 'scale(' + scale + ')';
+    s.style.left = Math.max(0, Math.floor((w - 896 * scale) / 2)) + 'px';
+    s.style.top = Math.max(0, Math.floor((h - 576 * scale) / 2)) + 'px';
+    text('viewport', w + ' x ' + h);
+    text('protocol', location.protocol.replace(':', '').toUpperCase() + ' / DPR ' + (window.devicePixelRatio || 1));
+  }
+  function supports(property, value) {
+    try { return window.CSS && window.CSS.supports ? window.CSS.supports(property, value) : null; }
+    catch (e) { return null; }
+  }
+  yes('t-flex', supports('display', 'flex'));
+  yes('t-grid', supports('display', 'grid'));
+  yes('t-vars', supports('--diagnostic-color', '#fff'));
+  yes('t-ratio', supports('aspect-ratio', '1 / 1'));
+  var has = null;
+  try { has = window.CSS && window.CSS.supports ? window.CSS.supports('selector(:has(*))') : null; } catch (e) {}
+  yes('t-has', has);
+  yes('t-promise', typeof window.Promise === 'function');
+  yes('t-fetch', typeof window.fetch === 'function');
+  yes('t-ws', typeof window.WebSocket !== 'undefined');
+  yes('t-modules', 'noModule' in document.createElement('script'));
+  var canvas = null;
+  try { var c = document.createElement('canvas'); canvas = !!(c.getContext && c.getContext('2d')); } catch (e) { canvas = false; }
+  yes('t-canvas', canvas);
+  function runtime() {
+    var age = Math.floor((new Date().getTime() - started) / 1000);
+    text('runtime', 'Экран: ' + screen.width + ' x ' + screen.height + ' · Глубина: ' + screen.colorDepth + ' бит' +
+      ' · Таймер: ' + age + ' с');
+  }
+  function hint() {
+    text('hint', fixed ? 'Тест v1.0 · Закреплённая страница · Сфотографируйте экран' :
+      (paused ? 'Тест v1.0 · Пауза · Сфотографируйте экран' : 'Тест v1.0 · Следующая страница через ' + (period - elapsed) + ' с'));
+    text('pause', paused ? 'Продолжить' : 'Пауза');
+  }
+  function show(n) {
+    page = n; elapsed = 0;
+    byId('page1').style.display = page === 1 ? 'block' : 'none';
+    byId('page2').style.display = page === 2 ? 'block' : 'none';
+    text('page-number', page + ' / 2'); hint();
+  }
+  var p = /(?:\?|&)page=([12])(?:&|$)/.exec(location.search);
+  if (p) { fixed = true; paused = true; page = Number(p[1]); }
+  byId('pause').onclick = function () { fixed = false; paused = !paused; hint(); };
+  byId('next').onclick = function () { show(page === 1 ? 2 : 1); };
+  document.onkeydown = function (event) {
+    var ev = event || window.event, key = ev.keyCode;
+    if (key === 32) { fixed = false; paused = !paused; hint(); if (ev.preventDefault) { ev.preventDefault(); } return false; }
+    if (key === 37 || key === 39) { show(page === 1 ? 2 : 1); }
+  };
+  window.onresize = size;
+  size(); runtime(); show(page);
+  window.setInterval(function () {
+    runtime();
+    if (!paused) { elapsed++; if (elapsed >= period) { show(page === 1 ? 2 : 1); } }
+    hint();
+  }, 1000);
+})();
+</script>
+</body>
+</html>
